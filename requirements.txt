@@ -1,0 +1,9 @@
+azure-storage-file
+azure-storage-blob
+boto3
+easywebdav
+ftputil
+libnfs; sys_platform != 'win32'
+pymongo
+pysmbclient
+pysftp
