@@ -129,71 +129,93 @@ class TestBasePath(unittest.TestCase):
             self.assertIsInstance(bc, BasePath)
 
     def test_BasePath_query(self):
+        '''Test BasePath.query property'''
         bp = BasePath('file://to/some/thing?query=True')
-        bp
 
     def test_BasePath_anchor_property(self):
-        self.fail('todo')
+        '''Test BasePath.anchor property'''
+        self.assertEqual(BasePath(local_uri).anchor, '.')
 
     def test_BasePath_absolute(self):
-        self.fail('todo')
+        '''Test BasePath.absolute()'''
+        self.assertEqual(BasePath(local_uri).absolute(),
+                         BasePath(local_uri))
 
     def test_BasePath_as_posix(self):
-        self.fail('todo')
+        '''Test BasePath.as_posix()'''
+        self.assertEqual(BasePath(local_uri).as_posix(),
+                         BasePath(local_uri))
 
     def test_BasePath_as_uri(self):
-        self.fail('todo')
+        '''Test BasePath.as_uri()'''
+        self.assertEqual(BasePath(local_uri).as_uri(), local_uri)
 
     def test_BasePath_chmod(self):
+        '''Test BasePath.chmod()'''
         self.fail('todo')
 
     def test_BasePath_cwd(self):
+        '''Test BasePath.cwd()'''
         self.fail('todo')
 
-    def test_BasePath_drive_proerty(self):
+    def test_BasePath_drive_property(self):
+        '''Test BasePath.drive property'''
         self.fail('todo')
 
     def test_BasePath_exists(self):
+        '''Test BasePath.exists()'''
         self.fail('todo')
 
     def test_BasePath_expanduser(self):
-        self.fail('todo')
+        '''Test BasePath.expanduser()'''
+        self.assertEqual(BasePath(local_uri).expanduser())
 
     def test_BasePath_glob(self):
+        '''Test BasePath.glob()'''
         self.fail('todo')
 
     def test_BasePath_group(self):
-        self.fail('todo')
+        '''Test BasePath.group()'''
+        self.assertEqual(BasePath(local_uri), None)
 
     def test_BasePath_suffix(self):
         self.fail('todo')
 
     def test_BasePath_home(self):
-        self.fail('todo')
+        '''Test BasePath.home()'''
+        self.assertEqual(BasePath.home(), os.path.expanduser('~'))
 
     def test_BasePath_is_absolute(self):
-        self.fail('todo')
+        '''Test BasePath.is_absolute()'''
+        self.assertEqual(BasePath(local_uri).is_absolute(), True)
 
     def test_BasePath_is_block_device(self):
-        self.fail('todo')
+        '''Test BasePath.is_block_device()'''
+        self.assertEqual(BasePath(local_uri).is_block_device(), False)
 
     def test_BasePath_is_char_device(self):
-        self.fail('todo')
+        '''Test BasePath.is_char_device()'''
+        self.assertEqual(BasePath(local_uri).is_char_device(), False)
 
     def test_BasePath_is_dir(self):
-        self.fail('todo')
+        '''Test BasePath.is_dir()'''
+        self.assertEqual(BasePath(local_uri).is_absolute(), True)
 
     def test_BasePath_is_fifo(self):
-        self.fail('todo')
+        '''Test BasePath.is_fifo()'''
+        self.assertEqual(BasePath(local_uri).is_fifo(), False)
 
     def test_BasePath_is_reserved(self):
-        self.fail('todo')
+        '''Test BasePath.is_reserved()'''
+        self.assertEqual(BasePath(local_uri).is_reserved(), False)
 
     def test_BasePath_is_socket(self):
-        self.fail('todo')
+        '''Test BasePath.is_socket()'''
+        self.assertEqual(BasePath(local_uri).is_socket(), False)
 
     def test_BasePath_is_symlink(self):
-        self.fail('todo')
+        '''Test BasePath.is_symlink()'''
+        self.assertEqual(BasePath(local_uri).is_symlink(), False)
 
     def test_BasePath_iterdir(self):
         self.fail('todo')
@@ -222,7 +244,7 @@ class TestBasePath(unittest.TestCase):
         self.fail('todo')
 
     def test_BasePath_owner(self):
-        self.fail('todo')
+        self.assertEqual(BasePath(local_uri).owner(), None)
 
     def test_BasePath_parent_property(self):
         self.fail('todo')
@@ -261,7 +283,7 @@ class TestBasePath(unittest.TestCase):
         self.assertTrue(BasePath(local_uri).root, '/')
 
     def samefile(self):
-        self.fail('todo')
+        self.assertTrue(BasePath(local_uri).samefile(local_uri))
 
     def test_BasePath_stat(self):
         self.fail('todo')

@@ -183,7 +183,8 @@ class BasePath(object):
         '''The final component's last suffix, if any.'''
         return os.path.splitext(self.path)[1]
 
-    def home(self):
+    @classmethod
+    def home(cls):
         '''Return a new path pointing to the user's home directory (as
         returned by os.path.expanduser('~')).'''
         import pathlib
