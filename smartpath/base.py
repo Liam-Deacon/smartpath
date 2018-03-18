@@ -1,7 +1,7 @@
 import os
 import re
 
-from abc import ABC, abstractmethod
+from abc import ABCMeta
 from contextlib import contextmanager
 from io import BytesIO, StringIO
 
@@ -9,6 +9,13 @@ try:
     from urlparse import urlparse, parse_qs
 except ImportError:
     from urllib.parse import urlparse, parse_qs
+
+try:
+    import pathlib
+    from pathlib import _Accessor
+except ImportError:
+    pathlib = None
+    _Accessor = object
 
 
 class SessionError(object):
@@ -39,12 +46,12 @@ def not_implemented(func):
     '''Wrapper for functions without implementations,
     but unlink `abstractmethod`, are not required for class'''
     def wrapper(*args, **kwargs):
-        func(*args, **kwargs)
-    raise NotImplementedError('{}() not available'.formay(func.__name__))
+        raise NotImplementedError('{}() not available'.format(func.__name__))
+    return wrapper
 
 
 class BasePath(object):
-    SESSION_FACTORY = None
+    SESSION_FACTORY = pathlib.PosixPath
 
     def __init__(self, uri, session=None):
         '''
@@ -62,7 +69,8 @@ class BasePath(object):
         self.uri = uri
         uri = urlparse(uri)
 
-        self.scheme = uri.scheme
+        self.scheme = self._drv = uri.scheme  # _drv for compatibility with pathlib
+        self.netloc = self._root = uri.netloc  # _root for compatibility with pathlib
         self.hostname = uri.hostname
         self.port = uri.port
         self.path = uri.path
@@ -71,13 +79,13 @@ class BasePath(object):
         self.username = uri.username
         self.password = uri.password
 
-        self.session = session
+        self._accessor = self.session = session
 
         try:
-            if self.session is None:
-                self.session = self.SESSION_FACTORY(username=self.username,
-                                                    password=self.password,
-                                                    **self.query)
+            if self.session is None and callable(self.SESSION_FACTORY):
+                self._accessor = self.session = self.SESSION_FACTORY(username=self.username,
+                                                                     password=self.password,
+                                                                     **self.query)
         except Exception:
             pass
 
@@ -95,6 +103,15 @@ class BasePath(object):
         new_path = self.path + '/' + str(getattr(other, 'path', other))
         return self.__class__(self.uri.replace(self.path, new_path),
                               session=self.session)
+
+    def __eq__(self, other):
+        return str(self) == str(other)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
 
     @property
     def query(self):
@@ -389,7 +406,53 @@ class BasePath(object):
             f.write(text)
 
 
-class BaseClient(ABC):
+class BaseClient(_Accessor):
+    '''A base client to act as a mixin'''
+    __metaclass__ = ABCMeta
+    __pathclass__ = BasePath
+
+    def __init__(self, uri, **kwargs):
+        # initialise object dictionary with kwargs
+        self.__dict__.update(kwargs)
+
+        # add uri and update class dictionary if missing keys
+        self.uri = uri
+        self._uri = uri = urlparse(uri)
+        self.username = getattr(self, 'username', uri.username)
+        self.password = getattr(self, 'password', uri.password)
+        self.hostname = getattr(self, 'hostname', uri.hostname or '127.0.0.1')
+        self.netloc = getattr(self, 'netloc', uri.netloc)  # TODO: bug possible here due to hostname fix above
+        self.port = getattr(self, 'port', uri.port)
+        self.path = getattr(self, 'path', uri.path[1:] or os.path.abspath('.'))
+        self.fragment = getattr(self, 'fragment', uri.fragment)
+        self.scheme = getattr(self, 'scheme', uri.scheme or 'https')
+        self.params = getattr(self, 'params', uri.params)
+        self.query = getattr(self, 'query', uri.query)
+
+        def naive_convert(t):
+            try:
+                s = str(t)
+                if s.lower() == 'true':
+                    s = True
+                elif s.lower() == 'false':
+                    s = False
+                elif s.lower() in ['null', 'none']:
+                    s = None
+                return eval(str(s))
+            except Exception:
+                return t
+
+        # add query items to class dictionary, avoiding name clashes
+        self.__dict__.update(dict([(key, naive_convert(val[0]))
+                             if key not in self.__dict__
+                             else ('{}_'.format(key), naive_convert(val[0]))
+                             for (key, val) in parse_qs(uri.query).items()]))
+
+    def getpath(self, path=None):
+        '''Returns associated Path type for client'''
+        uri = self.uri.replace(self._uri.path, '/' + (path or self.path))
+        return self.__pathclass__(uri, self)
+
     @not_implemented
     def stat(self, path):
         pass
@@ -398,12 +461,12 @@ class BaseClient(ABC):
     def lstat(self, path):
         pass
 
-    @abstractmethod
+    @not_implemented
     @contextmanager
     def open(self, path, mode='r'):
         yield open(path, mode)
 
-    @abstractmethod
+    @not_implemented
     def listdir(self, path=''):
         pass
 

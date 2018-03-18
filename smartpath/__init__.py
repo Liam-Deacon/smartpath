@@ -1,1 +1,1 @@
-from .uripath import UriPath
+from .uripath import UriPath as SmartPath  # noqa: disable=F401

@@ -5,6 +5,9 @@ import sys
 import gridfs
 import pymongo
 
+from pathlib import _Accessor
+from .base import BasePath
+
 
 class GridFsClient(object):
     class _NormalAccessor(_Accessor):
@@ -67,3 +70,7 @@ class GridFsClient(object):
     # Helper for resolve()
     def readlink(self, path):
         return os.readlink(path)
+
+
+class GridFSPath(BasePath):
+    pass

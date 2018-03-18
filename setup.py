@@ -31,5 +31,9 @@ setup(
     install_requires=open(root + 'requirements.txt', 'r').readlines(),
     extras_require={
         ":python_version<'3.0'": ['futures'],
+        "dev": [
+            'wsgidav',
+            'flake8'
+        ]
     },
 )

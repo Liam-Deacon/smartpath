@@ -12,17 +12,20 @@ class UriPath(object):
 
     def createSession(self, **kwargs):
         '''Tries to create a new session appropriate to URI scheme'''
-        scheme = self.scheme
-        hostname = self.hostname
+        uri = urllib.parse.urlparse(self.uri)
+        scheme = uri.scheme
+        hostname = uri.hostname
         if scheme is 'dav':
             from .dav import WebDavClient, WebDavPath
             self.session = WebDavClient(**kwargs)
             self.__class__ = WebDavPath
         elif scheme in ['ftp', 'ftps']:
-            from .ftp import FTPClient, FTPSClient, FT
-            client = FTPClient if scheme is 'ftp' else FTPSClient
-            self.session = client(**kwargs)
-        elif scheme is ['sftp']:
+            from .ftp import FTPClient, FTPPath
+            self.session = FTPClient(**kwargs)
+            self.__class__ = FTPPath
+        elif scheme is 'sftp':
+            raise NotImplementedError
+        elif scheme is 'sshfs':
             raise NotImplementedError
         elif scheme is 'mogodb':
             from .mongodb import GridFsClient
@@ -40,11 +43,27 @@ class UriPath(object):
             self.session = S3Client(**kwargs)
             self.__class__ = S3Path
         elif hostname.endswith('blob.core.windows.net'):
-            from .azure import AzureBlobStorageClient
+            from .azure import AzureBlobStorageClient, AzurePath
             self.session = AzureBlobStorageClient(**kwargs)
+            self.__class__ = AzurePath
         elif hostname.endswith('file.core.windows.net'):
-            from .azure import AzureFileStorageClient
+            from .azure import AzureFileStorageClient, AzurePath
             self.session = AzureFileStorageClient(**kwargs)
+            self.__class__ = AzurePath
+        elif 'onedrive' in hostname:
+            raise NotImplementedError('OneDrive not yet supported')
+        elif hostname.startswith('drive.google.com'):
+            raise NotImplementedError('Google Drive not yet supported')
+        elif 'amazon.co.uk/clouddrive' in self.uri:
+            raise NotImplementedError('Amazon Drive not yet supported')
+        elif hostname in ('icloud.com', 'www.icloud.com'):
+            raise NotImplementedError('Apple iCloud not yet supported')
+        elif hostname in ('box.com', 'www.box.com'):
+            raise NotImplementedError('Box.com not yet supported')
+        elif scheme is 'file':
+            import pathlib
+            self.__class__ = pathlib.Path
+            self.session = pathlib._NormalAccessor
         try:
             # hack to change class
             self.__init__(self.uri, self.session)

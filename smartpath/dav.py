@@ -4,7 +4,10 @@ import dateutil
 import time
 import os
 
+import tempfile
+
 from .base import BasePath
+
 
 class stat_result(object):
     def __init__(self, path):
@@ -118,7 +121,12 @@ class WebDavClient(easywebdav.Client):
               dir_fd=None, follow_symlinks=True):
         raise NotImplementedError
 
+    def rename(self, src, dst):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self.download(src, os.path.join(tmpdir, 'temp'))
+            self.upload(os.path.join(tmpdir, 'temp'), dst)
+
     # alias functions for uniform interface
     unlink = easywebdav.Client.delete
-    replace = easywebdav.Client.rename
+    replace = rename
     makedirs = easywebdav.Client.mkdirs

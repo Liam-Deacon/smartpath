@@ -1,5 +1,8 @@
 azure-storage-file
 azure-storage-blob
+onedrivesdk
+dropbox
+pyicloud
 boto3
 easywebdav
 ftputil

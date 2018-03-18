@@ -5,12 +5,12 @@
 import functools
 import os
 import sys
-from pathlib import _Assesor
+from pathlib import _Accessor
 
 from .base import BaseClient, BasePath
 
 
-class HTTPAccessor(_Assesor):
+class HTTPAccessor(_Accessor):
     """[summary]
     """
     def _wrap_strfunc(strfunc):
