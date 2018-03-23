@@ -3,7 +3,7 @@ smartpath - Smarter URI paths in the style of pathlib
 
 Smartly handle URIs as though they are local files (similar to `pathlib.Path`)
 
-This project was started I believed there could be an easier way to
+This project was started because I believed there could be an easier way to
 handle remote file IO within Python in a uniform and standard's compliant
 fashion. There is still a long way to go, but hopefully this shows
 proof of concept.
