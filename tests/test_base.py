@@ -168,7 +168,8 @@ class TestBasePath(unittest.TestCase):
 
     def test_BasePath_expanduser(self):
         '''Test BasePath.expanduser()'''
-        self.assertEqual(BasePath(local_uri).expanduser())
+        path = local_uri.format(path='/var/~')
+        self.assertEqual(BasePath(path).expanduser(), os.path.expanduser(path))
 
     def test_BasePath_glob(self):
         '''Test BasePath.glob()'''

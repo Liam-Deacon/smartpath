@@ -50,7 +50,35 @@ def not_implemented(func):
     return wrapper
 
 
-class BasePath(object):
+def attempt_path_session_bind(func):
+    '''Attempts to determine best way to execute function within current session'''
+    def wrapper(self):
+        try:
+            return getattr(self.session, func.__name__)(self.path)
+        except TypeError:
+            return getattr(self.session, func.__name__)()
+    return wrapper
+
+
+class UriProperties(object):
+    @property
+    def query(self):
+        return parse_qs(getattr(self, '_query', None))
+
+    @query.setter
+    def query(self, query_string):
+        self._query = query_string
+
+    @property
+    def params(self):
+        return parse_qs(getattr(self, '_params', None))
+
+    @params.setter
+    def params(self, params_string):
+        self._params = params_string
+
+
+class BasePath(UriProperties):
     SESSION_FACTORY = pathlib.PosixPath
 
     def __init__(self, uri=None, session=None, **kwargs):
@@ -75,6 +103,7 @@ class BasePath(object):
         self.port = uri.port or None
         self.path = uri.path or None
         self.query = uri.query or None
+        self.params = uri.params or None
 
         self.username = uri.username or None
         self.password = uri.password or None
@@ -133,14 +162,6 @@ class BasePath(object):
             self._accessor = None
         if new_session is not None:
             self._session = self._accessor = new_session
-
-    @property
-    def query(self):
-        return parse_qs(self._query)
-
-    @query.setter
-    def query(self, query_string):
-        self._query = query_string
 
     @property
     def anchor(self):
@@ -215,29 +236,36 @@ class BasePath(object):
         '''Always true as URL paths start at root of share'''
         return True
 
+    @attempt_path_session_bind
     def is_block_device(self):
         '''Whether this path is a block device.'''
         return self.session.is_block_device(self.path)
 
+    @attempt_path_session_bind
     def is_char_device(self):
         '''Whether this path is a character device.'''
         return self.session.is_char_device(self.path)
 
+    @attempt_path_session_bind
     def is_dir(self):
         return self.session.is_dir(self.path)
 
+    @attempt_path_session_bind
     def is_fifo(self):
         '''Whether this path is a FIFO.'''
         return self.session.is_fifo(self.path)
 
+    @attempt_path_session_bind
     def is_reserved(self):
         '''Return True if the path contains one of the special names reserved
         by the system, if any.'''
         return self.session.is_reserved(self.path)
 
+    @attempt_path_session_bind
     def is_socket(self):
         return self.session.is_socket(self.path)
 
+    @attempt_path_session_bind
     def is_symlink(self):
         return self.session.is_symlink(self.path)
 
@@ -428,14 +456,15 @@ class BasePath(object):
             f.write(text)
 
 
-class BaseClient(_Accessor):
+class BaseClient(_Accessor, UriProperties):
     '''A base client to act as a mixin'''
     __metaclass__ = ABCMeta
     __pathclass__ = BasePath
 
     def __init__(self, uri, **kwargs):
         # initialise object dictionary with kwargs
-        self.__dict__.update(kwargs)
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
         # add uri and update class dictionary if missing keys
         self.uri = uri
