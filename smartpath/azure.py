@@ -1,26 +1,36 @@
+'''Module for handling Azure Blob and File Storage'''
 from azure.storage.blob import BlockBlobService
 from azure.storage.file import FileService
 from contextlib import contextmanager
 from functools import partial
+from urllib.parse import urlencode
 
 import os
+import datetime
 
 from .base import (BaseClient, BasePath,
                    NamedBytesIO, NamedStringIO)
 
 
 class AzureStorageBaseClient(BaseClient):
+    '''Connect to Azure storage account'''
     ENV_PREFIX = 'AZURE_'
     _factory = None
 
     def __init__(self, host, port=0, auth=None,
-                 username=None, password=None, use_env=True):
+                 username=None, password=None, use_env=True, **kwargs):
         if use_env:
             username = username or os.environ.get(self.ENV_PREFIX + 'USERNAME')
             password = password or os.environ.get(self.ENV_PREFIX + 'PASSWORD')
             auth = auth or os.environ.get(self.ENV_PREFIX + 'AUTH')
-        self._service = self._factory(account_name=username,
-                                      account_key=password)
+        if self._factory and callable(self._factory):
+            self._service = self._factory(
+                account_name=None, account_key=None, sas_token=None,
+                is_emulated=False, protocol='https', custom_domain=None,
+                endpoint_suffix='core.windows.net', socket_timeout=None,
+                request_session=None, connection_string=None)
+        else:
+            self._service = None
 
     @staticmethod
     def _splitAzurePath(path):
@@ -165,6 +175,49 @@ class AzureBlobStorageClient(AzureStorageBaseClient):
     ENV_PREFIX = 'AZURE_BLOB_'
     _factory = BlockBlobService
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+    def upload(self, src, dst, container=None, upload_if=None, **kwargs):
+        '''Uploads a file to blob storage, creating container as needed
+
+        Arguments
+        ---------
+        src can be either a path, bytes, str or fileobj
+
+        Optional Arguments
+        ------------------
+        container: container to store data into, otherwise infer if None
+        upload_if: apply operation only if boolean or string condition is met
+            string conditions include source is 'newer', 'older', 'larger' 
+            (can be chained together e.g. 'newer and not larger')
+        '''
+        container = container or self.default_container
+
+        blob = AzurePath(dst, service=self.service, container=container)
+        self.service.create_container(container, fail_on_exist=False)
+        if hasattr(src, 'read') and callable(src.read):
+            create_blob = self.service.create_blob_from_stream
+        elif os.path.exists(src):
+            if blob.exists():
+                stat = os.stat(src)
+                last_modified = datetime.datetime.fromtimestamp(stat.mtime)
+                newer = last_modified > blob.last_modified  # pylint: disable=W0612,F841
+                older = last_modified < blob.last_modified  # pylint: disable=W0612,F841
+                larger = blob.size > stat.st_size  # pylint: disable=W0612,F841
+                if upload_if is not None and not eval(str(upload_if)):
+                    return
+            create_blob = self.service.create_blob_from_path
+        elif type(src) is bytes:
+            create_blob = self.service.create_blob_from_bytes
+        else:
+            create_blob = self.service.create_blob_from_text
+        timeout = kwargs.pop('timeout', 10)
+        return create_blob(container, dst, src, timeout=timeout, **kwargs)
+
     def exists(self, path):
         container, subpath = self._splitAzurePath(path)
         exists = self._service.exists(container, subpath)
@@ -257,6 +310,59 @@ class AzureBlobStorageClient(AzureStorageBaseClient):
 
 
 class AzurePath(BasePath):
+    '''An Azure Storage Path'''
+    SESSION_FACTORY = AzureBlobStorageClient  # default client
+
+    def __init__(self, uri, session=None, **kwargs):
+        if session is 'blob' or isinstance(session, AzureBlobStorageClient):
+            self.SESSION_FACTORY = AzureBlobStorageClient
+        elif session is 'file' or isinstance(session, AzureFileStorageClient):
+            self.SESSION_FACTORY = AzureFileStorageClient
+        super().__init__(self, uri, session, **kwargs)
+        if self.session is None:
+            self.session = self.SESSION_FACTORY(
+                account_name=kwargs.pop('account_name', self.account_name),
+                account_key=kwargs.pop('account_key', self.password),
+                sas_token=kwargs.pop('sas_token',
+                                     self.query.get('sas_token',
+                                                    self.constructSASToken())),
+                is_emulated=kwargs.pop('is_emulated',
+                                       self.query.get('is_emulated', False)),
+                protocol=self.scheme,
+                custom_domain=kwargs.get('custom_domain',
+                                         self.query.get('custom_domain') or
+                                         self.custom_domain),
+                endpoint_suffix=kwargs.get('endpoint_suffix',
+                                           self.query.get('endpoint_suffix',
+                                                          'core.windows.net')),
+                socket_timeout=kwargs.pop('socket_timeout',
+                                          self.query.get('socket_timeout')),
+                request_session=kwargs.pop('request_session'),
+                connection_string=kwargs.pop('connection_string'))
+
+    @property
+    def custom_domain(self):
+        '''The custom domain if any'''
+        custom_host = 'www.{}'.format(str(self.hostname))
+        return (None if 'core.windows.net' in str(self.hostname)
+                else custom_host.replace(self.account_name + '.', ''))
+
+    @property
+    def account_name(self):
+        '''The Azure storage account name, if any'''
+        parts = str(self.hostname).split('.')
+        # check to see if host contains suitable FQDN to infer account name
+        if len(parts) >= 3:
+            account = parts[0]
+        else:
+            account = self.username
+        return account
+
+    def constructSASToken(self):
+        return urlencode([(k, v) for k, v in ('sv', 'ss', 'srt', 'sp',
+                                              'se', 'st', 'spr', 'sig')
+                          if k in self.__dict__])
+
     @property
     def anchor(self):
         '''The concatenation of the drive and root, or ''.'''
