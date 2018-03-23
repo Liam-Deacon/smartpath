@@ -1,0 +1,9 @@
+recursive-include smartpath *
+include ChangeLog.md
+include README.md
+include LICENSE
+include VERSION
+include requirements.txt
+include setup.py
+include setup.cfg
+include Pipfile
