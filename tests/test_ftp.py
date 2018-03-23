@@ -35,8 +35,7 @@ def setTearDownModule():
 class TestFtpClient(unittest.TestCase):
     def test_FTPClient(self):
         print(FTP_PORT)
-
-        self.fail('TODO')
+        FTPClient()
 
 
 class TestFTPPath(unittest.TestCase):
