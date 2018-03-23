@@ -1,3 +1,4 @@
+'''Module for handling FTP paths'''
 import ftplib
 import ftputil
 import pysftp
@@ -17,24 +18,50 @@ class FTPTLSSession(ftplib.FTP_TLS):
         self.prot_p()  # set the encrypted data connection
 
 
-class FTPClient(ftputil.FTPHost):
+class FTPClient(ftputil.FTPHost, BaseClient):
+    '''Simplified yet flexible FTP client'''
     def __init__(self, factory=ftplib.FTP, **kwargs):
-        super(ftputil.FTPHost, self).__init__(session_factory=factory,
-                                              **kwargs)
+        BaseClient.__init__(self, uri=kwargs.pop('uri', 'ftp://'), **kwargs)
+        ftputil.FTPHost.__init__(
+            self,
+            kwargs.pop('server',
+                       kwargs.pop('host',
+                                  kwargs.pop('hostname',
+                                             self.hostname))),
+            kwargs.pop('username', self.username),
+            kwargs.pop('password', self.password),
+            port=kwargs.pop('port', self.port or 21),
+            session_factory=factory, **kwargs)
 
 
-class FTPPath(BasePath):
-    SESSION_FACTORY = FTPClient
+class SFTPClient(pysftp.Connection, BaseClient):
+    '''An FTP over SSH client'''
+    def __init__(self, **kwargs):
+        BaseClient.__init__(self, uri=kwargs.pop('uri', 'sftp://'), **kwargs)
+        pysftp.Connection.__init__(
+            self,
+            kwargs.pop('server',
+                       kwargs.pop('host',
+                                  kwargs.pop('hostname',
+                                             self.hostname))),
+            username=kwargs.pop('username', self.username),
+            private_key=kwargs.pop(
+                'private_key', getattr(self, 'private_key',
+                                       self.query.get('private_key'))),
+            password=kwargs.pop('password', self.password),
+            private_key_pass=kwargs.pop(
+                'private_key_pass', getattr(self, 'private_key_pass',
+                                            self.query.get('private_key_pass'))),
+            port=kwargs.pop('port', self.port or 22),
+            default_path=kwargs.pop(
+                'default_path', self.path if len(self.path) > 1 else None),
+            ciphers=kwargs.pop('ciphers', self.query.get('ciphers')),
+            log=kwargs.pop('log', self.query.get('log', False)),
+            cnopts=dict([(k, kwargs.get(k, self.query.get(k)))
+                         for k in set(list(kwargs.keys()) +
+                                      list(self.query.keys()))])
+            )
 
-    def __init__(self, uri, session=None):
-        super(BasePath, self).__init__(uri, session)
-        factory = FTPTLSSession if self.scheme is 'ftps' else ftplib.FTP
-        self.session = self.session or (
-            FTPClient(self.hostname, self.username, self.password,
-                      session_factory=factory))
-
-
-class SFTPClient(pysftp.Connection):
     def is_dir(self, path):
         return self.isdir(path)
 
@@ -59,7 +86,8 @@ class SFTPClient(pysftp.Connection):
 
 
 class SFTPPath(BasePath):
-    SESSION_FACTORY = pysftp.Connection
+    '''FTP over SSH path'''
+    SESSION_FACTORY = SFTPClient
 
     def __init__(self, uri, session=None):
         super(BaseClient, self).__init__(uri, session)
@@ -70,3 +98,19 @@ class SFTPPath(BasePath):
                        default_path=os.dirname(self.path),
                        private_key=self.query.get('private_key', None),
                        cnopts=self.query))
+
+
+class FTPPath(BasePath):
+    '''FTP or FTPS Path'''
+    SESSION_FACTORY = FTPClient
+
+    def __init__(self, uri, session=None, **kwargs):
+        BasePath.__init__(self, uri, session, **kwargs)
+        if self.scheme is 'sftp':
+            self.session = session or SFTPClient(**kwargs)
+            self.__class__ = SFTPPath  # dark magic to convert to SFTPPath
+        else:
+            factory = FTPTLSSession if self.scheme is 'ftps' else ftplib.FTP
+            factory = kwargs.pop('session_factory', factory)
+            self.session = session or (
+                FTPClient(session_factory=factory, **kwargs))
