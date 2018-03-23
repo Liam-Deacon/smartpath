@@ -53,7 +53,7 @@ def not_implemented(func):
 class BasePath(object):
     SESSION_FACTORY = pathlib.PosixPath
 
-    def __init__(self, uri, session=None):
+    def __init__(self, uri=None, session=None, **kwargs):
         '''
         Initialise BasesPath with optional attached session
         session must be an object with the following method signatures:
@@ -66,26 +66,36 @@ class BasePath(object):
             - open(path, *args, **kwargs)
 
         '''
-        self.uri = uri
-        uri = urlparse(uri)
+        self.uri = uri or ''
+        uri = urlparse(uri or 'file://')
 
         self.scheme = self._drv = uri.scheme  # _drv for compatibility with pathlib
         self.netloc = self._root = uri.netloc  # _root for compatibility with pathlib
-        self.hostname = uri.hostname
-        self.port = uri.port
-        self.path = uri.path
-        self.query = uri.query
+        self.hostname = uri.hostname or kwargs.get('hostname', kwargs.get('server'))
+        self.port = uri.port or None
+        self.path = uri.path or None
+        self.query = uri.query or None
 
-        self.username = uri.username
-        self.password = uri.password
+        self.username = uri.username or None
+        self.password = uri.password or None
 
-        self._accessor = self.session = session
+        self.session = session
 
+        uri_dict = dict([(k, getattr(uri, k, None)) for k in
+                         ('scheme', 'netloc', 'hostname', 'port', 'path', 'query')])
+        kwargs.update(dict([(k, v) for k, v in uri_dict.items() if uri_dict[k]]))
+        self._init_dict_ = kwargs
         try:
             if self.session is None and callable(self.SESSION_FACTORY):
-                self._accessor = self.session = self.SESSION_FACTORY(username=self.username,
-                                                                     password=self.password,
-                                                                     **self.query)
+                try:
+                    self.session = self.SESSION_FACTORY(**kwargs)
+                except ValueError:
+                    # remove unwanted entries
+                    kw = dict([(k, v) for (k, v) in kwargs.items() if k not in
+                               ('scheme', 'netloc', 'path', 'query')])
+                    self.session = self.SESSION_FACTORY(**kw)
+            elif self.session is None and not callable(self.SESSION_FACTORY):
+                self.session = self.SESSION_FACTORY
         except Exception:
             pass
 
@@ -112,6 +122,17 @@ class BasePath(object):
 
     def __exit__(self, *args):
         pass
+
+    @property
+    def session(self):
+        return getattr(self, '_session', None)
+
+    @session.setter
+    def session(self, new_session):
+        if not hasattr(self, '_accessor'):
+            self._accessor = None
+        if new_session is not None:
+            self._session = self._accessor = new_session
 
     @property
     def query(self):
