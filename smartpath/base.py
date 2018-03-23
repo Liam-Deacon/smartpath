@@ -3,6 +3,7 @@ import re
 
 from abc import ABCMeta
 from contextlib import contextmanager
+from collections import defaultdict
 from io import BytesIO, StringIO
 
 try:
@@ -63,7 +64,8 @@ def attempt_path_session_bind(func):
 class UriProperties(object):
     @property
     def query(self):
-        return parse_qs(getattr(self, '_query', None))
+        return defaultdict(lambda: None,
+                           parse_qs(getattr(self, '_query', None)))
 
     @query.setter
     def query(self, query_string):
@@ -71,7 +73,8 @@ class UriProperties(object):
 
     @property
     def params(self):
-        return parse_qs(getattr(self, '_params', None))
+        return defaultdict(lambda: None, 
+                           parse_qs(getattr(self, '_params', None)))
 
     @params.setter
     def params(self, params_string):

@@ -1,21 +1,20 @@
 import os
 import unittest
 
-from smartpath.smb import SmbClient, SmbPath
+from smartpath.smb import SambaClient, SambaPath
 
 
 SHARE = os.environ.get('SMARTPATH_SAMBA_TEST_SHARE')
-SmbClient()
 
 
 class TestSmbClient(unittest.TestCase):
-    def test_SmbClient(self):
-        '''Test SmbClient()'''
-        raise NotImplementedError
+    def test_SambaClient(self):
+        '''Test SambaClient()'''
+        SambaClient()
 
 
 class TestSmbPath(unittest.TestCase):
-    def test_SmbPath(self):
-        '''Test SmbPath()'''
-        raise NotImplementedError
+    def test_SambaPath(self):
+        '''Test SambaPath()'''
+        SambaPath()
 
