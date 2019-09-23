@@ -4,7 +4,7 @@ onedrivesdk
 dropbox
 pyicloud
 boto3
-easywebdav
+easywebdav==1.2.0
 ftputil
 libnfs; sys_platform != 'win32'
 pymongo
