@@ -9,4 +9,4 @@ ftputil
 libnfs; sys_platform != 'win32'
 pymongo
 pysmbclient
-pysftp
+pysftp==0.2.9
