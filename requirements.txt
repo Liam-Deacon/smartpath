@@ -6,7 +6,7 @@ pyicloud
 boto3
 easywebdav
 ftputil
-libnfs; sys_platform != 'win32'
+libnfs==1.0.post4; sys_platform != 'win32'
 pymongo
 pysmbclient
 pysftp
