@@ -2,7 +2,7 @@ azure-storage-file
 azure-storage-blob
 onedrivesdk
 dropbox
-pyicloud
+pyicloud==0.9.4
 boto3
 easywebdav
 ftputil
