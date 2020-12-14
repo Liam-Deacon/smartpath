@@ -1,6 +1,6 @@
 azure-storage-file
 azure-storage-blob
-onedrivesdk
+onedrivesdk==2.0
 dropbox
 pyicloud
 boto3
