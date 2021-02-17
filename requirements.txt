@@ -5,7 +5,7 @@ dropbox
 pyicloud
 boto3
 easywebdav
-ftputil
+ftputil==5.0.0
 libnfs; sys_platform != 'win32'
 pymongo
 pysmbclient
