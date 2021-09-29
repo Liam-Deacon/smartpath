@@ -1,7 +1,7 @@
 azure-storage-file
 azure-storage-blob
 onedrivesdk
-dropbox
+dropbox==11.21.0
 pyicloud
 boto3
 easywebdav
