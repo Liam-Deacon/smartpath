@@ -7,6 +7,6 @@ boto3
 easywebdav
 ftputil
 libnfs; sys_platform != 'win32'
-pymongo
+pymongo==4.3.3
 pysmbclient
 pysftp
