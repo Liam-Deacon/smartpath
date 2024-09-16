@@ -3,7 +3,7 @@ azure-storage-blob
 onedrivesdk
 dropbox
 pyicloud
-boto3
+boto3==1.35.20
 easywebdav
 ftputil
 libnfs; sys_platform != 'win32'
