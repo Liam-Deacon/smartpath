@@ -1,5 +1,5 @@
 azure-storage-file
-azure-storage-blob
+azure-storage-blob==12.23.1
 onedrivesdk
 dropbox
 pyicloud
